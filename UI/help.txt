@@ -1,0 +1,139 @@
+# window = tk.Tk()
+
+# # window.geometry("1280x720")
+# # screen_width= window.winfo_screenwidth()               
+# # screen_height= window.winfo_screenheight()
+# # window.geometry("%dx%d" % (screen_width, screen_height))
+
+# window.state('zoomed') # for windows
+# # window.attributes('-zoomed', True)
+
+# window.resizable(True,False)
+# window.title("Attendance System")
+# window.configure(background='#262523')
+
+# leftHalf = tk.Frame(window, bg="#00ff00")
+# leftHalf.place(relx=0.01, rely=0.17, relwidth=0.5, relheight=0.80)
+
+# rightHalf = tk.Frame(window, bg="#00aeff")
+# rightHalf.place(relx=0.51, rely=0.17, relwidth=0.38, relheight=0.80)
+# # tabControl = ttk.Notebook(window)
+# # adminTab = ttk.Frame(tabControl)
+# # attendanceTab = ttk.Frame(tabControl)
+# # tabControl.add(adminTab, text='Admin')
+# # tabControl.add(attendanceTab, text='Davomat')
+# # tabControl.pack(expand=1, fill='both')
+# # ttk.Label(adminTab, text="Admin qismi").grid(column = 0, 
+# #                                row = 0,
+# #                                padx = 30,
+# #                                pady = 30)
+# # ttk.Label(attendanceTab, text="Davomat qismi").grid(column = 0, 
+# #                                row = 0,
+# #                                padx = 30,
+# #                                pady = 30)
+
+# message3 = tk.Label(window, text="Face Recognition Based Attendance System" ,fg="white",bg="#262523" ,width=55 ,height=1,font=('times', 29, ' bold '))
+# message3.place(x=10, y=10)
+
+# frame3 = tk.Frame(window, bg="#c4c6ce")
+# frame3.place(relx=0.52, rely=0.09, relwidth=0.09, relheight=0.07)
+
+# frame4 = tk.Frame(window, bg="#c4c6ce")
+# frame4.place(relx=0.36, rely=0.09, relwidth=0.16, relheight=0.07)
+
+# datef = tk.Label(frame4, text = day+"-"+mont[month]+"-"+year+"  |  ", fg="orange",bg="#262523" ,width=55 ,height=1,font=('times', 22, ' bold '))
+# datef.pack(fill='both',expand=1)
+
+# clock = tk.Label(frame3,fg="orange",bg="#262523" ,width=55 ,height=1,font=('times', 22, ' bold '))
+# clock.pack(fill='both',expand=1)
+# tick()
+
+# head2 = tk.Label(rightHalf, text="                       For New Registrations                       ", fg="black",bg="#3ece48" ,font=('times', 17, ' bold ') )
+# head2.grid(row=0,column=0)
+
+# head1 = tk.Label(leftHalf, text="                       For Already Registered                       ", fg="black",bg="#3ece48" ,font=('times', 17, ' bold ') )
+# head1.place(x=0,y=0)
+
+# lbl = tk.Label(rightHalf, text="Enter ID",width=20  ,height=1  ,fg="black"  ,bg="#00aeff" ,font=('times', 17, ' bold ') )
+# lbl.place(x=80, y=55)
+
+# txt = tk.Entry(rightHalf,width=32 ,fg="black",font=('times', 15, ' bold '))
+# txt.place(x=30, y=88)
+
+# lbl2 = tk.Label(rightHalf, text="Enter Name",width=20  ,fg="black"  ,bg="#00aeff" ,font=('times', 17, ' bold '))
+# lbl2.place(x=80, y=140)
+
+# txt2 = tk.Entry(rightHalf,width=32 ,fg="black",font=('times', 15, ' bold ')  )
+# txt2.place(x=30, y=173)
+
+# message1 = tk.Label(rightHalf, text="1)Take Images  >>>  2)Save Profile" ,bg="#00aeff" ,fg="black"  ,width=39 ,height=1, activebackground = "yellow" ,font=('times', 15, ' bold '))
+# message1.place(x=7, y=230)
+
+# message = tk.Label(rightHalf, text="" ,bg="#00aeff" ,fg="black"  ,width=39,height=1, activebackground = "yellow" ,font=('times', 16, ' bold '))
+# message.place(x=7, y=450)
+
+# lbl3 = tk.Label(leftHalf, text="Attendance",width=20  ,fg="black"  ,bg="#00aeff"  ,height=1 ,font=('times', 17, ' bold '))
+# lbl3.place(x=100, y=115)
+
+# res=0
+# exists = os.path.isfile("StudentDetails/StudentDetails.csv")
+# if exists:
+#     with open("StudentDetails/StudentDetails.csv", 'r') as csvFile1:
+#         reader1 = csv.reader(csvFile1)
+#         for l in reader1:
+#             res = res + 1
+#     res = (res // 2) - 1
+#     csvFile1.close()
+# else:
+#     res = 0
+# message.configure(text='Total Registrations till now  : '+str(res))
+
+# ##################### MENUBAR #################################
+
+# menubar = tk.Menu(window,relief='ridge')
+# filemenu = tk.Menu(menubar,tearoff=0)
+# filemenu.add_command(label='Change Password', command = change_pass)
+# filemenu.add_command(label='Contact Us', command = contact)
+# filemenu.add_command(label='Exit',command = window.destroy)
+# menubar.add_cascade(label='Help',font=('times', 29, ' bold '),menu=filemenu)
+
+# ################## TREEVIEW ATTENDANCE TABLE ####################
+
+# # tv= ttk.Treeview(leftHalf,height =13,columns = ('name','date','time'))
+# # tv.column('#0',width=82)
+# # tv.column('name',width=130)
+# # tv.column('date',width=133)
+# # tv.column('time',width=133)
+# # tv.grid(row=2,column=0,padx=(0,0),pady=(150,0),columnspan=4)
+# # tv.heading('#0',text ='ID')
+# # tv.heading('name',text ='NAME')
+# # tv.heading('date',text ='DATE')
+# # tv.heading('time',text ='TIME')
+
+# ###################### SCROLLBAR ################################
+
+# # scroll=ttk.Scrollbar(leftHalf,orient='vertical',command=tv.yview)
+# # scroll.grid(row=2,column=4,padx=(0,100),pady=(150,0),sticky='ns')
+# # tv.configure(yscrollcommand=scroll.set)
+
+# ###################### BUTTONS ##################################
+
+# clearButton = tk.Button(rightHalf, text="Clear", command=clear  ,fg="black"  ,bg="#ea2a2a"  ,width=11 ,activebackground = "white" ,font=('times', 11, ' bold '))
+# clearButton.place(x=335, y=86)
+# clearButton2 = tk.Button(rightHalf, text="Clear", command=clear2  ,fg="black"  ,bg="#ea2a2a"  ,width=11 , activebackground = "white" ,font=('times', 11, ' bold '))
+# clearButton2.place(x=335, y=172)    
+# takeImg = tk.Button(rightHalf, text="Take Images", command=TakeImages  ,fg="white"  ,bg="blue"  ,width=34  ,height=1, activebackground = "white" ,font=('times', 15, ' bold '))
+# takeImg.place(x=30, y=300)
+# trainImg = tk.Button(rightHalf, text="Save Profile", command=psw ,fg="white"  ,bg="blue"  ,width=34  ,height=1, activebackground = "white" ,font=('times', 15, ' bold '))
+# trainImg.place(x=30, y=380)
+# trackImg = tk.Button(leftHalf, text="Take Attendance", command=TrackImages  ,fg="black"  ,bg="yellow"  ,width=35  ,height=1, activebackground = "white" ,font=('times', 15, ' bold '))
+# trackImg.place(x=30,y=50)
+# quitWindow = tk.Button(leftHalf, text="Quit", command=window.destroy  ,fg="black"  ,bg="red"  ,width=35 ,height=1, activebackground = "white" ,font=('times', 15, ' bold '))
+# quitWindow.place(x=30, y=450)
+
+# ##################### END ######################################
+
+# window.configure(menu=menubar)
+# window.mainloop()
+
+# ####################################################################################################
