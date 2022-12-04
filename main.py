@@ -1,11 +1,13 @@
 from PIL import Image, ImageTk
 import tkinter as tk
+from tkinter import ttk
 import argparse
 import datetime
 import cv2
 import os
 import face_recognition as face_id
 import pkg.helpers as helper
+from tkcalendar import DateEntry
 
 PURPLE_COLOR = (255, 0, 255)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -42,9 +44,56 @@ class Application:
         self.root.title("Attendance System")
         self.root.configure(background='#262523')
         self.leftHalf = tk.Frame(self.root, bg="#00ff00")
-        self.leftHalf.place(relx=0.01, rely=0.17, relwidth=0.5, relheight=0.80)
+
+
+        root.option_add("*tearOff", False)
+
+        main = ttk.Frame(root)
+        main.pack(fill="both", expand=True, padx=1, pady=(4, 0))
+
+        menubar = tk.Menu()
+        root.config(menu=menubar)
+
+        file_menu = tk.Menu(menubar)
+        help_menu = tk.Menu(menubar)
+
+        menubar.add_cascade(menu=file_menu, label="File")
+        menubar.add_cascade(menu=help_menu, label="Help")
+
+        file_menu.add_command(label="Admin",background="#66ee22", command=example)
+        file_menu.add_command(label="Save File", command=example)
+        file_menu.add_command(label="Open File", command=example)
+        file_menu.add_command(label="Close Tab", command=example)
+        file_menu.add_command(label="Exit", command=quit_app)
+
+        help_menu.add_command(label="About", command=show_about_info)
+
+        notebook = ttk.Notebook(main)
+        notebook.pack(fill="both", expand=True)
+
+
+
+        self.leftHalf.place(relx=0.01, rely=0.08, relwidth=0.5, relheight=0.90)
         self.topLabelLeft = tk.Label(self.leftHalf, text="                       For Already Registered                       ", fg="black",bg="#3ece48" ,font=('times', 17, ' bold ') )
         self.topLabelLeft.pack(side=tk.TOP)
+        self.dateAndTimeFrame = tk.Frame(self.leftHalf, bg="#00ff00")
+        self.cur_date, self.cur_time = helper.get_date_and_time()
+        self.dateLabel = tk.Label(self.dateAndTimeFrame, text="Today : "+self.cur_date,
+                                                        width=20,
+                                                        height=25,
+                                                        bg="#006633",
+                                                        fg="white",
+                                                        font=('times', 17, ' bold '))
+        self.timeLabel = tk.Label(self.dateAndTimeFrame, text="Vaqt : "+self.cur_time,
+                                                        width=13,
+                                                        height=25,
+                                                        bg="#00ff00",
+                                                        fg="red",
+                                                        font=('times', 17, ' bold '))
+        self.dateLabel.place(relx=0.12, y=1, height=25)
+        self.timeLabel.place(relx=0.6, y=35, height=25)
+        self.dateAndTimeFrame.place(relx=0.005, rely=0.05, relwidth=0.97, relheight=0.3)
+        self.update_date_and_time()
 
         self.panel = tk.Label(self.leftHalf)  # initialize image panel
         self.panel.pack(expand=True)
@@ -55,42 +104,117 @@ class Application:
 
         # # # right side of the window
         self.rightHalf = tk.Frame(self.root, bg="#00aeff")
-        self.rightHalf.place(relx=0.51, rely=0.17, relwidth=0.5, relheight=0.80)
-
-        menubar = tk.Menu(self.root ,relief='ridge')
-        filemenu = tk.Menu(menubar,tearoff=0)
+        self.rightHalf.place(relx=0.51, rely=0.08, relwidth=0.5, relheight=0.90)
+        
+        help_menu = tk.Menu(self.root ,relief='ridge')
+        admin_menu = tk.Menu(self.root ,relief='ridge')
+        filemenu = tk.Menu(help_menu,tearoff=0)
+        mainmenu = tk.Menu(help_menu,tearoff=0)
+        mainmenu.add_command(label='Add new employee')
         filemenu.add_command(label='Change Password')
         filemenu.add_command(label='Contact Us')
         filemenu.add_command(label='Exit')
-        menubar.add_cascade(label='Help',font=('times', 29, ' bold '),menu=filemenu)
-
-        # head2 = tk.Label(rightHalf, text="                       For New Registrations                       ", fg="black",bg="#3ece48" ,font=('times', 17, ' bold ') )
-        # head2.grid(row=0,column=0)
+        help_menu.add_cascade(label='Help',font=('times', 29, ' bold '),menu=filemenu)
+        admin_menu.add_cascade(label='Admin',font=('times', 29, ' bold '),menu=mainmenu)
+        
+        # # Registration
+        registrationFrame = tk.Frame(self.rightHalf, bg="#ffeeaa")
 
         self.employee_name = tk.StringVar()
         self.employee_surname = tk.StringVar()
-
-        submit_btn = tk.Button(self.rightHalf, text='Submit', command=self.form_submit)
-
-        lbl = tk.Label(self.rightHalf, text="Employee name",width=20  ,height=1  ,fg="black"  ,bg="#00aeff" ,font=('times', 17, ' bold ') )
-        # lbl.place(x=80, y=55)
-
-        txt = tk.Entry(self.rightHalf, textvariable=self.employee_name, width=32 ,fg="black",font=('times', 15, ' bold '))
-        # txt.place(x=30, y=88)
-
-
-        lbl4 = tk.Label(self.rightHalf, text="Employee surname",width=20  ,height=1  ,fg="black"  ,bg="#00aeff" ,font=('times', 17, ' bold ') )
-        # lbl4.place(x=80, y=55)
-
-        txt4 = tk.Entry(self.rightHalf, textvariable=self.employee_surname, width=32 ,fg="black",font=('times', 15, ' bold '))
-        # txt4.place(x=30, y=88)
-        lbl.grid(row=0,column=0)
-        txt.grid(row=0,column=1)
-        lbl4.grid(row=1,column=0)
-        txt4.grid(row=1,column=1)
-        submit_btn.grid(row=2, column=1)
-
+        registrationFrameLabel = tk.Label(registrationFrame, text="                Add new employee",
+                                                        fg="black",
+                                                        bg="#ffeeaa",
+                                                        font=('times', 20, ' bold '))
+        placeholderLabel = tk.Label(registrationFrame, text="",
+                                                        fg="black",
+                                                        bg="#ffeeaa",
+                                                        height=3,
+                                                        font=('times', 20, ' bold '),
+                                                        state='disabled')
+        employeeNameLabel = tk.Label(registrationFrame, text="Employee name",
+                                                        width=20,
+                                                        height=1,
+                                                        bg="#ffeeaa",
+                                                        fg="black",
+                                                        font=('times', 17, ' bold '))
+        employeeName = tk.Entry(registrationFrame, textvariable=self.employee_name, 
+                                                        width=60,
+                                                        fg="black",
+                                                        font=('times', 15, ' bold '))
+        employeeSurnameLabel = tk.Label(registrationFrame, text="Employee surname",
+                                                        width=20,
+                                                        height=1,
+                                                        bg="#ffeeaa",
+                                                        fg="black",
+                                                        font=('times', 17, ' bold '))
+        employeeSurname = tk.Entry(registrationFrame, textvariable=self.employee_surname,
+                                                        width=60,
+                                                        fg="black",
+                                                        font=('times', 15, ' bold '))
+        employeeBirthdateLabel = tk.Label(registrationFrame, text="Birth date",
+                                                        width=20,
+                                                        height=1,
+                                                        bg="#ffeeaa",
+                                                        fg="black",
+                                                        font=('times', 17, ' bold '))
+        datePicker = DateEntry(registrationFrame,width= 16,
+                                                        background= "magenta3",
+                                                        foreground="white",
+                                                        bd=2,
+                                                        year=1996,
+                                                        selectmode='day',
+                                                        locale = 'en_us',
+                                                        date_pattern ='dd.mm.yyyy')
+        placeholderLabel2 = tk.Label(registrationFrame, text="",
+                                                        fg="black",
+                                                        bg="#ffeeaa",
+                                                        height=1,
+                                                        font=('times', 20, ' bold '),
+                                                        state='disabled')
+        datePicker.place(relx=0.7, rely=0.75)
         
+        submitBtn = tk.Button(registrationFrame, text='Submit', command=self.form_submit, width=27)
+
+        registrationFrameLabel.place(x=10, y=20)
+        placeholderLabel.grid(row=0,column=0)
+        employeeNameLabel.grid(row=1,column=0,ipady=17)
+        employeeName.grid(row=1,column=1,ipady=7)
+        employeeSurnameLabel.grid(row=2,column=0,ipady=17)
+        employeeSurname.grid(row=2,column=1,ipady=7)
+        employeeBirthdateLabel.grid(row=3,column=0,ipady=17)
+        placeholderLabel2.grid(row=4,column=0,ipady=7)
+        submitBtn.grid(row=4,column=1,ipady=1,sticky='w')
+
+        # registrationFrame.place(relx=0.15, rely=0.25, relwidth=0.7, relheight=0.44)
+
+
+
+
+        # # Attendance Table
+        attendanceTable = tk.Frame(self.rightHalf, bg="#ffeeaa")
+        tv=ttk.Treeview(attendanceTable,height=13,columns=('id','name','date','time'))
+        tv.column('#0',width=40)
+        tv.column('id',width=82)
+        tv.column('name',width=130)
+        tv.column('date',width=133)
+        tv.column('time',width=133)
+        tv.grid(row=2,column=0,padx=(0,0),pady=(150,0),columnspan=4)
+        tv.heading('#0',text ='#')
+        tv.heading('id',text ='ID')
+        tv.heading('name',text ='NAME')
+        tv.heading('date',text ='DATE')
+        tv.heading('time',text ='TIME')
+        i = 1
+        for word in ('hgj', 'kjhk', 'lkj', 'drdt','lkj','hgj', 'kjhk', 'lkj', 'drdt','lkj','hgj', 'kjhk', 'lkj', 'drdt','lkj','hgj', 'kjhk', 'lkj', 'drdt','lkj','hgj', 'kjhk', 'lkj', 'drdt','lkj','hgj', 'kjhk', 'lkj', 'drdt','lkj'):
+            i = i + 1
+            tv.insert('', 0, text='9', values=('Abdulloh', 'Nurulloh', 'Men','8.45'))
+        scroll=ttk.Scrollbar(attendanceTable,orient='vertical',command=tv.yview)
+        scroll.grid(row=2,column=4,padx=(0,100),pady=(150,0),sticky='ns')
+        tv.configure(yscrollcommand=scroll.set)
+        attendanceTable.place(relx=0.15, rely=0.25, relwidth=0.7, relheight=0.70)
+        
+
 
         # lbl2 = tk.Label(rightHalf, text="Enter Name",width=20  ,fg="black"  ,bg="#00aeff" ,font=('times', 17, ' bold '))
         # lbl2.place(x=80, y=140)
@@ -192,6 +316,13 @@ class Application:
         surname = self.employee_surname.get()
         print('name :', name, '   surname :', surname)
 
+    def update_date_and_time(self):
+        self.cur_date, self.cur_time = helper.get_date_and_time()
+        self.dateLabel.configure(text=self.cur_date)
+        self.timeLabel.configure(text=self.cur_time)
+        self.dateAndTimeFrame.after(1000, self.update_date_and_time)
+
+
 # construct the argument parse and parse the arguments
 ap = argparse.ArgumentParser()
 ap.add_argument("-o", "--output", default="./",
@@ -203,23 +334,3 @@ print("[INFO] starting...")
 pba = Application(args["output"])
 pba.root.mainloop()
 
-
-# import cv2 as cv
-# import numpy as np
-# import face_recognition as face_id
-# import os
-# import pkg.helpers as helper
-
-
-
-
-# imageBill = face_id.load_image_file(IMAGE_DIR + '\\jack.png')
-# imageBill = cv.cvtColor(imageBill, cv.COLOR_BGR2RGB)
-
-
-
-
-
-    
-# cap.release()
-# cv.destroyAllWindows()

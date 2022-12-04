@@ -1,4 +1,6 @@
 import os
+import datetime
+import time
 import cv2 as cv
 import face_recognition as face_id
 import numpy as np
@@ -27,7 +29,7 @@ def get_encodings(images):
     return encodings
 
 
-def resizeAndPad(img, size, padColor=0):
+def resize_and_pad(img, size, padColor=0):
 
     h, w = img.shape[:2]
     sh, sw = size
@@ -67,3 +69,8 @@ def resizeAndPad(img, size, padColor=0):
     scaled_img = cv.copyMakeBorder(scaled_img, pad_top, pad_bot, pad_left, pad_right, borderType=cv.BORDER_CONSTANT, value=padColor)
 
     return scaled_img
+
+def get_date_and_time():
+    curr_time = time.strftime("%H:%M:%S", time.localtime())
+    curr_date = datetime.datetime.today().strftime ('%d-%b-%Y')
+    return curr_date, curr_time
