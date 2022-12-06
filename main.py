@@ -72,18 +72,8 @@ class Application:
         self.topLabelLeft.pack(side=tk.TOP)
         self.dateAndTimeFrame = tk.Frame(self.leftHalf, bg="#00ff00")
         self.cur_date, self.cur_time = helper.get_date_and_time()
-        self.dateLabel = tk.Label(self.dateAndTimeFrame, text="Today : "+self.cur_date,
-                                                        width=20,
-                                                        height=25,
-                                                        bg="#006633",
-                                                        fg="white",
-                                                        font=('times', 17, ' bold '))
-        self.timeLabel = tk.Label(self.dateAndTimeFrame, text="Vaqt : "+self.cur_time,
-                                                        width=13,
-                                                        height=25,
-                                                        bg="#00ff00",
-                                                        fg="red",
-                                                        font=('times', 17, ' bold '))
+        self.dateLabel = helper.make_label(self.dateAndTimeFrame, "Today : "+self.cur_date, 20, 25, "", "white", "#006633", font=('times', 17, ' bold '))
+        self.timeLabel = helper.make_label(self.dateAndTimeFrame, "Vaqt : "+self.cur_time, 13, 25, "", "red", "#00ff00", ('times', 17, ' bold '))
         self.dateLabel.place(relx=0.12, y=1, height=25)
         self.timeLabel.place(relx=0.6, y=35, height=25)
         self.dateAndTimeFrame.place(relx=0.005, rely=0.05, relwidth=0.97, relheight=0.3)
@@ -315,44 +305,19 @@ class Application:
         self.employee_name = tk.StringVar()
         self.employee_surname = tk.StringVar()
         registrationFrameLabel = helper.make_label(self.registrationFrame, "                Add new employee", 0, 0, "", "", "#ffeeaa", font=('times', 20, ' bold '))
-        # registrationFrameLabel = tk.Label(self.registrationFrame, text="                Add new employee",
-        #                                                 fg="black",
-        #                                                 bg="#ffeeaa",
-        #                                                 font=('times', 20, ' bold '))
         placeholderLabel = helper.make_label(self.registrationFrame, "", 0, 3, "disabled", "", "#ffeeaa", font=('times', 20, ' bold '))
-        # placeholderLabel = tk.Label(self.registrationFrame, text="",
-        #                                                 fg="black",
-        #                                                 bg="#ffeeaa",
-        #                                                 height=3,
-        #                                                 font=('times', 20, ' bold '),
-        #                                                 state='disabled')
         employeeNameLabel = helper.make_label(self.registrationFrame, "Employee name", 20, 1, "", "", "#ffeeaa", font=('times', 17, ' bold '))
-        # employeeNameLabel = tk.Label(self.registrationFrame, text="Employee name",
-        #                                                 width=20,
-        #                                                 height=1,
-        #                                                 bg="#ffeeaa",
-        #                                                 fg="black",
-        #                                                 font=('times', 17, ' bold '))
+
         employeeName = tk.Entry(self.registrationFrame, textvariable=self.employee_name, 
                                                         width=60,
                                                         fg="black",
                                                         font=('times', 15, ' bold '))
-        employeeSurnameLabel = tk.Label(self.registrationFrame, text="Employee surname",
-                                                        width=20,
-                                                        height=1,
-                                                        bg="#ffeeaa",
-                                                        fg="black",
-                                                        font=('times', 17, ' bold '))
+        employeeSurnameLabel = helper.make_label(self.registrationFrame, "Employee surname", 20, 1, "", "", "#ffeeaa", font=('times', 17, ' bold '))
         employeeSurname = tk.Entry(self.registrationFrame, textvariable=self.employee_surname,
                                                         width=60,
                                                         fg="black",
                                                         font=('times', 15, ' bold '))
-        employeeBirthdateLabel = tk.Label(self.registrationFrame, text="Birth date",
-                                                        width=20,
-                                                        height=1,
-                                                        bg="#ffeeaa",
-                                                        fg="black",
-                                                        font=('times', 17, ' bold '))
+        employeeBirthdateLabel = helper.make_label(self.registrationFrame, "Birth date", 20, 1, "", "", "#ffeeaa", font=('times', 17, ' bold '))
         self.datePicker = DateEntry(self.registrationFrame,width= 16,
                                                         background= "magenta3",
                                                         foreground="white",
@@ -361,12 +326,7 @@ class Application:
                                                         selectmode='day',
                                                         locale = 'en_us',
                                                         date_pattern ='dd.mm.yyyy')
-        employeePhotoLabel = tk.Label(self.registrationFrame, text="Face picture",
-                                                        width=20,
-                                                        height=1,
-                                                        bg="#ffeeaa",
-                                                        fg="black",
-                                                        font=('times', 17, ' bold '))
+        employeePhotoLabel = helper.make_label(self.registrationFrame, "Face picture", 20, 1, "", "", "#ffeeaa", font=('times', 17, ' bold '))
            
         unknown_person_img = Image.open("data/images/unknown.jpeg")
         self.employeePhoto = tk.Label(self.registrationFrame, bg="#ffeeaa")
@@ -374,12 +334,8 @@ class Application:
         imgtk = ImageTk.PhotoImage(unknown_person_img) # convert image for tkinter
         self.employeePhoto.imgtk = imgtk # anchor imgtk so it does not be deleted by garbage-collector
         self.employeePhoto.config(image=imgtk) # show the image
-        placeholderLabel2 = tk.Label(self.registrationFrame, text="",
-                                                        fg="black",
-                                                        bg="#ffeeaa",
-                                                        height=1,
-                                                        font=('times', 20, ' bold '),
-                                                        state='disabled')
+        placeholderLabel2 = helper.make_label(self.registrationFrame, "", 0, 1, "disabled", "", "#ffeeaa", font=('times', 20, ' bold '))
+
         self.datePicker.place(relx=0.7, rely=0.39)
         
         submitBtn = tk.Button(self.registrationFrame, text='Submit', command=self.form_submit, width=27)
