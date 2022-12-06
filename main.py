@@ -1,3 +1,6 @@
+import csv
+import json
+import re
 from PIL import Image, ImageTk
 import tkinter as tk
 from tkinter import ttk
@@ -6,17 +9,23 @@ import datetime
 import cv2
 import os
 import face_recognition as face_id
+import numpy as np
 import pkg.helpers as helper
 from tkcalendar import DateEntry
 
 PURPLE_COLOR = (255, 0, 255)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-IMAGE_DIR = os.path.join(BASE_DIR, "data\\test\\actual")
-TEST_IMAGE_DIR = os.path.join(BASE_DIR, "data\\test\\mock")
+IMAGE_DIR = os.path.join(BASE_DIR, "data/test/actual")
+EMPLOYEES_IMAGES_DIR = os.path.join(BASE_DIR, "data/images/employees")
+EMPLOYEES_DATA_FILE_PATH = os.path.join(BASE_DIR, "data/csv/employees.csv")
+ATTENDANCE_DATA_FOLDER_PATH = os.path.join(BASE_DIR, "data/csv/attendance")
+TEST_IMAGE_DIR = os.path.join(BASE_DIR, "data/test/mock")
 COLOR_WHITE = (255, 255, 255)
 COLOR_LIGHT_GREEN = (0, 255, 0)
 COLOR_RED = (0, 0, 255)
-RECTANELE_STROKE = 2
+RECTANGLE_STROKE = 2
+SCALING_FACTOR = 0.7
+SNAPSHOT_CROP_SIZE = (80+RECTANGLE_STROKE, 80+RECTANGLE_STROKE, 420-RECTANGLE_STROKE, 420-RECTANGLE_STROKE)
 
 class Application:
     def __init__(self, output_path = "./"):
@@ -25,19 +34,18 @@ class Application:
         self.cap = cv2.VideoCapture(0) # capture video frames, 0 is your default video camera
         self.output_path = output_path  # store output path
         self.current_image = None  # current image from the camera
+        self.mode = 'table'
 
         self.root = tk.Tk()  # initialize root window
         self.root.title("PyImageSearch PhotoBooth")  # set window title
         # self.destructor function gets fired when the window is closed
         self.root.protocol('WM_DELETE_WINDOW', self.destructor)
 
-        knownPeople, labels = helper.get_images_and_labels(IMAGE_DIR)
-        self.encodings = helper.get_encodings(knownPeople)
-        self.labels = labels
+        self.refresh_labels_and_encodings()
 
         # ---------------------------
-        self.root.state('zoomed') # for windows
-        # self.root.attributes('-zoomed', True) # for linux (ubuntu)
+        # self.root.state('zoomed') # for windows
+        self.root.attributes('-zoomed', True) # for linux (ubuntu)
 
         # left side of the window
         self.root.resizable(False,False)
@@ -45,33 +53,19 @@ class Application:
         self.root.configure(background='#262523')
         self.leftHalf = tk.Frame(self.root, bg="#00ff00")
 
-
-        root.option_add("*tearOff", False)
-
-        main = ttk.Frame(root)
-        main.pack(fill="both", expand=True, padx=1, pady=(4, 0))
-
+        # root.option_add("*tearOff", False)
         menubar = tk.Menu()
-        root.config(menu=menubar)
-
         file_menu = tk.Menu(menubar)
         help_menu = tk.Menu(menubar)
 
-        menubar.add_cascade(menu=file_menu, label="File")
+        menubar.add_cascade(menu=file_menu, label="Admin")
         menubar.add_cascade(menu=help_menu, label="Help")
 
-        file_menu.add_command(label="Admin",background="#66ee22", command=example)
-        file_menu.add_command(label="Save File", command=example)
-        file_menu.add_command(label="Open File", command=example)
-        file_menu.add_command(label="Close Tab", command=example)
-        file_menu.add_command(label="Exit", command=quit_app)
-
-        help_menu.add_command(label="About", command=show_about_info)
-
-        notebook = ttk.Notebook(main)
-        notebook.pack(fill="both", expand=True)
-
-
+        file_menu.add_command(label="Add new employee",background="#66ee22", command=self.bring_registration_frame)
+        file_menu.add_command(label="Save File", command=self.example)
+        file_menu.add_command(label="Open File", command=self.example)
+        file_menu.add_command(label="Close Tab", command=self.example)
+        file_menu.add_command(label="Exit", command=self.example)
 
         self.leftHalf.place(relx=0.01, rely=0.08, relwidth=0.5, relheight=0.90)
         self.topLabelLeft = tk.Label(self.leftHalf, text="                       For Already Registered                       ", fg="black",bg="#3ece48" ,font=('times', 17, ' bold ') )
@@ -97,10 +91,6 @@ class Application:
 
         self.panel = tk.Label(self.leftHalf)  # initialize image panel
         self.panel.pack(expand=True)
-    
-        # create a button, that when pressed, will take the current frame and save it to file
-        btn = tk.Button(self.leftHalf, text="Snapshot!", font=("Helvetica", 17), height=3, width=15, borderwidth=0, command=self.take_snapshot)
-        btn.pack(fill="both", side=tk.BOTTOM, padx=10, pady=0)
 
         # # # right side of the window
         self.rightHalf = tk.Frame(self.root, bg="#00aeff")
@@ -117,125 +107,10 @@ class Application:
         help_menu.add_cascade(label='Help',font=('times', 29, ' bold '),menu=filemenu)
         admin_menu.add_cascade(label='Admin',font=('times', 29, ' bold '),menu=mainmenu)
         
-        # # Registration
-        registrationFrame = tk.Frame(self.rightHalf, bg="#ffeeaa")
-
-        self.employee_name = tk.StringVar()
-        self.employee_surname = tk.StringVar()
-        registrationFrameLabel = tk.Label(registrationFrame, text="                Add new employee",
-                                                        fg="black",
-                                                        bg="#ffeeaa",
-                                                        font=('times', 20, ' bold '))
-        placeholderLabel = tk.Label(registrationFrame, text="",
-                                                        fg="black",
-                                                        bg="#ffeeaa",
-                                                        height=3,
-                                                        font=('times', 20, ' bold '),
-                                                        state='disabled')
-        employeeNameLabel = tk.Label(registrationFrame, text="Employee name",
-                                                        width=20,
-                                                        height=1,
-                                                        bg="#ffeeaa",
-                                                        fg="black",
-                                                        font=('times', 17, ' bold '))
-        employeeName = tk.Entry(registrationFrame, textvariable=self.employee_name, 
-                                                        width=60,
-                                                        fg="black",
-                                                        font=('times', 15, ' bold '))
-        employeeSurnameLabel = tk.Label(registrationFrame, text="Employee surname",
-                                                        width=20,
-                                                        height=1,
-                                                        bg="#ffeeaa",
-                                                        fg="black",
-                                                        font=('times', 17, ' bold '))
-        employeeSurname = tk.Entry(registrationFrame, textvariable=self.employee_surname,
-                                                        width=60,
-                                                        fg="black",
-                                                        font=('times', 15, ' bold '))
-        employeeBirthdateLabel = tk.Label(registrationFrame, text="Birth date",
-                                                        width=20,
-                                                        height=1,
-                                                        bg="#ffeeaa",
-                                                        fg="black",
-                                                        font=('times', 17, ' bold '))
-        datePicker = DateEntry(registrationFrame,width= 16,
-                                                        background= "magenta3",
-                                                        foreground="white",
-                                                        bd=2,
-                                                        year=1996,
-                                                        selectmode='day',
-                                                        locale = 'en_us',
-                                                        date_pattern ='dd.mm.yyyy')
-        placeholderLabel2 = tk.Label(registrationFrame, text="",
-                                                        fg="black",
-                                                        bg="#ffeeaa",
-                                                        height=1,
-                                                        font=('times', 20, ' bold '),
-                                                        state='disabled')
-        datePicker.place(relx=0.7, rely=0.75)
+        # # load table frame
+        self.load_table_frame()
+        self.refresh_table_data()
         
-        submitBtn = tk.Button(registrationFrame, text='Submit', command=self.form_submit, width=27)
-
-        registrationFrameLabel.place(x=10, y=20)
-        placeholderLabel.grid(row=0,column=0)
-        employeeNameLabel.grid(row=1,column=0,ipady=17)
-        employeeName.grid(row=1,column=1,ipady=7)
-        employeeSurnameLabel.grid(row=2,column=0,ipady=17)
-        employeeSurname.grid(row=2,column=1,ipady=7)
-        employeeBirthdateLabel.grid(row=3,column=0,ipady=17)
-        placeholderLabel2.grid(row=4,column=0,ipady=7)
-        submitBtn.grid(row=4,column=1,ipady=1,sticky='w')
-
-        # registrationFrame.place(relx=0.15, rely=0.25, relwidth=0.7, relheight=0.44)
-
-
-
-
-        # # Attendance Table
-        attendanceTable = tk.Frame(self.rightHalf, bg="#ffeeaa")
-        tv=ttk.Treeview(attendanceTable,height=13,columns=('id','name','date','time'))
-        tv.column('#0',width=40)
-        tv.column('id',width=82)
-        tv.column('name',width=130)
-        tv.column('date',width=133)
-        tv.column('time',width=133)
-        tv.grid(row=2,column=0,padx=(0,0),pady=(150,0),columnspan=4)
-        tv.heading('#0',text ='#')
-        tv.heading('id',text ='ID')
-        tv.heading('name',text ='NAME')
-        tv.heading('date',text ='DATE')
-        tv.heading('time',text ='TIME')
-        i = 1
-        for word in ('hgj', 'kjhk', 'lkj', 'drdt','lkj','hgj', 'kjhk', 'lkj', 'drdt','lkj','hgj', 'kjhk', 'lkj', 'drdt','lkj','hgj', 'kjhk', 'lkj', 'drdt','lkj','hgj', 'kjhk', 'lkj', 'drdt','lkj','hgj', 'kjhk', 'lkj', 'drdt','lkj'):
-            i = i + 1
-            tv.insert('', 0, text='9', values=('Abdulloh', 'Nurulloh', 'Men','8.45'))
-        scroll=ttk.Scrollbar(attendanceTable,orient='vertical',command=tv.yview)
-        scroll.grid(row=2,column=4,padx=(0,100),pady=(150,0),sticky='ns')
-        tv.configure(yscrollcommand=scroll.set)
-        attendanceTable.place(relx=0.15, rely=0.25, relwidth=0.7, relheight=0.70)
-        
-
-
-        # lbl2 = tk.Label(rightHalf, text="Enter Name",width=20  ,fg="black"  ,bg="#00aeff" ,font=('times', 17, ' bold '))
-        # lbl2.place(x=80, y=140)
-
-        # txt2 = tk.Entry(rightHalf,width=32 ,fg="black",font=('times', 15, ' bold ')  )
-        # txt2.place(x=30, y=173)
-
-        # message1 = tk.Label(rightHalf, text="1)Take Images  >>>  2)Save Profile" ,bg="#00aeff" ,fg="black"  ,width=39 ,height=1, activebackground = "yellow" ,font=('times', 15, ' bold '))
-        # message1.place(x=7, y=230)
-
-        # message = tk.Label(rightHalf, text="" ,bg="#00aeff" ,fg="black"  ,width=39,height=1, activebackground = "yellow" ,font=('times', 16, ' bold '))
-        # message.place(x=7, y=450)
-
-        # clearButton = tk.Button(rightHalf, text="Clear", command=clear  ,fg="black"  ,bg="#ea2a2a"  ,width=11 ,activebackground = "white" ,font=('times', 11, ' bold '))
-        # clearButton.place(x=335, y=86)
-        # clearButton2 = tk.Button(rightHalf, text="Clear", command=clear2  ,fg="black"  ,bg="#ea2a2a"  ,width=11 , activebackground = "white" ,font=('times', 11, ' bold '))
-        # clearButton2.place(x=335, y=172)    
-        # takeImg = tk.Button(rightHalf, text="Take Images", command=TakeImages  ,fg="white"  ,bg="blue"  ,width=34  ,height=1, activebackground = "white" ,font=('times', 15, ' bold '))
-        # takeImg.place(x=30, y=300)
-        # trainImg = tk.Button(rightHalf, text="Save Profile", command=psw ,fg="white"  ,bg="blue"  ,width=34  ,height=1, activebackground = "white" ,font=('times', 15, ' bold '))
-        # trainImg.place(x=30, y=380)
 
         # start a self.video_loop that constantly pools the video sensor
         # for the most recently read frame
@@ -244,49 +119,39 @@ class Application:
 
     def video_loop(self):
         """ Get frame from the video stream and show it in Tkinter """
-        # while True:
-        #     success, frame = cap.read() # capture each frame
-        #     frame = cv.flip(frame, 180) # flip 180 degrees
-        #     camera_picture = cv.resize(frame, (0, 0), None, 0.8, 0.8)
-        #     colored_frame = cv.cvtColor(frame, cv.COLOR_BGR2RGB) # get greyscale copy of frame image
-        #     colored_frame = cv.resize(colored_frame, (0, 0), None, 0.25, 0.25)
-            
-        #     frame_faces = face_id.face_locations(colored_frame) # get all faces in the current frame
-        #     frame_face_encodings = face_id.face_encodings(colored_frame, frame_faces) # get face encodings
-            
-        #     for face_encode, face_location in zip(frame_face_encodings, frame_faces):
-        #         matches = face_id.compare_faces(encodings, face_encode)
-        #         distance = face_id.face_distance(encodings, face_encode)
-        #         best_match_index = np.argmin(distance)
-        #         y1, x2, y2, x1 = face_location
-        #         y1, x2, y2, x1 = y1 * 4, x2 * 4, y2 * 4, x1 * 4
-                
-        #         if matches[best_match_index]:
-        #             print(y1, x2, y2, x1)
-        #             match_name = labels[best_match_index]
-                    
-        #             cv.rectangle(frame, (x1, y1), (x2, y2), COLOR_LIGHT_GREEN, RECTANELE_STROKE)
-        #             cv.rectangle(frame, (x1, y2-40), (x2, y2), COLOR_LIGHT_GREEN, cv.FILLED)
-        #             cv.putText(frame,  f'{match_name} {round(distance[best_match_index], 2)}', (x1+6, y2-6), cv.FONT_HERSHEY_COMPLEX, 1, COLOR_WHITE, 2)
-        #         else:
-        #             cv.rectangle(frame, (x1, y1), (x2, y2), COLOR_RED, RECTANELE_STROKE)
-                    
-        #         scaled_img = cv.resize(frame, (x1, y1), interpolation=cv.INTER_CUBIC)
-        #         cv.imwrite("picture.jpg", scaled_img)
-
-            # cv.imshow('frame1', camera_picture) # image show
-
-
         ok, frame = self.cap.read()  # read frame from video stream
         if ok:  # frame captured without any errors
             frame = cv2.flip(frame, 180) # flip 180 degrees
-            # camera_picture = cv.resize(frame, (0, 0), None, 0.8, 0.8)
-            # colored_frame = cv.cvtColor(frame, cv.COLOR_BGR2RGB) # get greyscale copy of frame image
-            # colored_frame = cv.resize(colored_frame, (0, 0), None, 0.25, 0.25)
-            
-            # frame_faces = face_id.face_locations(colored_frame) # get all faces in the current frame
-            # frame_face_encodings = face_id.face_encodings(colored_frame, frame_faces) # get face encodings
+            frame = cv2.resize(frame, (500, 500), interpolation = cv2.INTER_AREA)
+            if self.mode == 'register':
+                cv2.rectangle(frame, (80, 420), (420, 80), COLOR_LIGHT_GREEN, RECTANGLE_STROKE)
+            else:
+                colored_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB) # get greyscale copy of frame image
+                colored_frame = cv2.resize(colored_frame, (0, 0), None, 0.35, 0.35)
+                
+                frame_faces = face_id.face_locations(colored_frame) # get all faces in the current frame
+                frame_face_encodings = face_id.face_encodings(colored_frame, frame_faces) # get face encodings
+                
+                for face_encode, face_location in zip(frame_face_encodings, frame_faces):
+                    matches = face_id.compare_faces(self.encodings, face_encode)
+                    distance = face_id.face_distance(self.encodings, face_encode)
+                    best_match_index = np.argmin(distance)
+                    y1, x2, y2, x1 = face_location
+                    y1, x2, y2, x1 = y1 * 4, x2 * 4, y2 * 4, x1 * 4
+                    
+                    pad_size = 60
+                    Y1_POSITION, Y2_POSITION = y1-pad_size, y2-pad_size
+                    X1_POSITION, X2_POSITION = x1-pad_size, x2-pad_size
+                    
+                    if matches[best_match_index]:
+                        # print(y1, x2, y2, x1)
+                        match_name = self.labels[best_match_index]
 
+                        cv2.rectangle(frame, (X1_POSITION, Y1_POSITION), (X2_POSITION, Y2_POSITION), COLOR_LIGHT_GREEN, RECTANGLE_STROKE)
+                        cv2.rectangle(frame, (X1_POSITION, Y2_POSITION-40), (X2_POSITION, Y2_POSITION), COLOR_LIGHT_GREEN, cv2.FILLED)
+                        cv2.putText(frame,  f'{match_name}', (X1_POSITION+6, Y2_POSITION-6), cv2.FONT_HERSHEY_COMPLEX, 1, COLOR_WHITE, 2) # {round(distance[best_match_index], 2)}
+                    else:
+                        cv2.rectangle(frame, (X1_POSITION, Y1_POSITION), (X2_POSITION, Y2_POSITION), COLOR_RED, RECTANGLE_STROKE)
 
             cv2image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA)  # convert colors from BGR to RGBA
             self.current_image = Image.fromarray(cv2image)  # convert image for PIL
@@ -299,9 +164,18 @@ class Application:
         """ Take snapshot and save it to the file """
         ts = datetime.datetime.now() # grab the current timestamp
         filename = "{}.jpg".format(ts.strftime("%Y-%m-%d_%H-%M-%S"))  # construct filename
-        p = os.path.join(self.output_path, filename)  # construct output path
-          # convert to RGB
-        self.current_image.save(p, "png")  # save image as jpeg file
+        snapshot_image = self.current_image.crop(SNAPSHOT_CROP_SIZE) # crop the frame to only include the face
+        # p = os.path.join(self.output_path, filename)  # construct output path
+        # snapshot_image.save(p, "png")  # save image as jpeg file
+        
+        if self.mode == 'register':
+            snapshot_resized = snapshot_image.resize((225,225))
+        
+            imgtk = ImageTk.PhotoImage(image=snapshot_resized)
+            self.employee_picture = snapshot_resized
+            self.employeePhoto.imgtk = imgtk
+            self.employeePhoto.config(image=imgtk)
+            
         print("[INFO] saved {}".format(filename))
 
     def destructor(self):
@@ -314,13 +188,216 @@ class Application:
     def form_submit(self):
         name = self.employee_name.get()
         surname = self.employee_surname.get()
-        print('name :', name, '   surname :', surname)
+        birth_date = self.datePicker.get_date()
+        name_trimmed = re.sub('[^a-zA-Z]+', '', name.lower())
+        surname_trimmed = re.sub('[^a-zA-Z]+', '', surname.lower())
+        img_name = name_trimmed + "_" + surname_trimmed + ".jpg"
+        img_destination = EMPLOYEES_IMAGES_DIR + "/"+ img_name
+        self.employee_picture.save(img_destination, "png")
+        
+        encodings = helper.get_single_image_encodings(img_destination)
+        stringified_encodings = "\n".join(str(x) for x in encodings)
+        data_array = [name, surname, birth_date, img_name, stringified_encodings]
+
+        exists = os.path.isfile(EMPLOYEES_DATA_FILE_PATH)
+        if exists:
+            with open(EMPLOYEES_DATA_FILE_PATH, 'a+') as csv_file:
+                writer = csv.writer(csv_file)
+                writer.writerow(data_array)
+            csv_file.close()
+        else:
+            with open(EMPLOYEES_DATA_FILE_PATH, 'w') as csv_file:
+                writer = csv.writer(csv_file)
+                writer.writerow(data_array)
+            csv_file.close()
+        
+        self.refresh_labels_and_encodings()
 
     def update_date_and_time(self):
         self.cur_date, self.cur_time = helper.get_date_and_time()
         self.dateLabel.configure(text=self.cur_date)
         self.timeLabel.configure(text=self.cur_time)
         self.dateAndTimeFrame.after(1000, self.update_date_and_time)
+    
+    def example(self):
+        print("Example")
+        
+    def refresh_table_data(self):
+        cur_date, _ = helper.get_date_and_time()
+        data_file_path = ATTENDANCE_DATA_FOLDER_PATH + "/" + cur_date + ".csv"
+        exists = os.path.isfile(data_file_path)
+        if not exists:
+            helper.generate_deatils_csv_file(EMPLOYEES_DATA_FILE_PATH, cur_date, data_file_path)
+        
+        # # adding an attendance details row
+        attendance_details = []
+        attendance_details_count = 0
+        with open(data_file_path, 'r') as csv_reader_file:
+            reader = csv.reader(csv_reader_file)
+            for line in reader:
+                attendance_details.append(line)
+                attendance_details_count = attendance_details_count + 1
+        csv_reader_file.close()
+        
+        # # checking if new employee was added
+        employees_count = 0
+        last_employee = []
+        with open(EMPLOYEES_DATA_FILE_PATH, 'r') as csv_employees_file:
+            reader = csv.reader(csv_employees_file)
+            for line in reader:
+                last_employee = line
+                employees_count = employees_count + 1
+        csv_employees_file.close()
+        
+        if employees_count > attendance_details_count:
+            with open(data_file_path, 'a+') as csv_file:
+                writer = csv.writer(csv_file)
+                writer.writerow([cur_date, last_employee[0], last_employee[1], '---', '---', '---', '---'])
+            csv_file.close()
+        
+        return attendance_details
+        
+    def load_table_frame(self):
+        # # Attendance Table
+        self.attendanceTable = tk.Frame(self.rightHalf, bg="#ffeeaa")
+        tv=ttk.Treeview(self.attendanceTable,height=13,columns=('name','surname','arrival_time','on_time'))
+        tv.column('#0',width=30)
+        tv.column('name',width=133)
+        tv.column('surname',width=133)
+        tv.column('arrival_time',width=95)
+        tv.column('on_time',width=40)
+        tv.grid(row=2,column=0,padx=(0,0),pady=(150,0),columnspan=4)
+        tv.heading('#0',text ='#')
+        tv.heading('name',text ='NAME')
+        tv.heading('surname',text ='SURNAME')
+        tv.heading('arrival_time',text ='ARRIVED_AT')
+        tv.heading('on_time',text ='ON_TIME')
+        
+        attendance_details = self.refresh_table_data()
+        i = len(attendance_details)
+        for employee in attendance_details:
+            tv.insert('', 0, text=str(i), values=(employee[1], employee[2], employee[3], employee[4]))
+            i = i - 1
+        scroll=ttk.Scrollbar(self.attendanceTable,orient='vertical',command=tv.yview)
+        scroll.grid(row=2,column=4,padx=(0,100),pady=(150,0),sticky='ns')
+        tv.configure(yscrollcommand=scroll.set)
+        self.attendanceTable.place(relx=0.15, rely=0.25, relwidth=0.7, relheight=0.70)
+    
+    def bring_table_frame(self):
+        # # remove back button
+        self.backButton.destroy()
+        # # remove snapshot button
+        self.snapshot_btn.destroy()
+        # # remove registrationFrame
+        self.registrationFrame.destroy()
+        # # switch mode
+        self.mode = 'table'
+        self.load_table_frame()
+        
+    def refresh_labels_and_encodings(self):
+        labels, encodings = helper.get_images_and_labels_from_csv(EMPLOYEES_DATA_FILE_PATH, EMPLOYEES_IMAGES_DIR)
+        self.encodings = encodings
+        self.labels = labels
+        
+    def bring_registration_frame(self):
+        # # remove table frame
+        self.attendanceTable.destroy()
+        # # switch mode
+        self.mode = 'register'
+        # # create a button, that when pressed, will take the current frame and save it to file
+        self.snapshot_btn = tk.Button(self.leftHalf, text="Snapshot!", font=("Helvetica", 17), height=3, width=15, borderwidth=0, command=self.take_snapshot)
+        self.snapshot_btn.pack(fill="both", side=tk.BOTTOM, padx=10, pady=0)
+        # # back button
+        self.backButton = tk.Button(self.rightHalf, text="< back",bg="yellow",command=self.bring_table_frame)
+        # # Registration frame
+        self.registrationFrame = tk.Frame(self.rightHalf, bg="#ffeeaa")
+
+        self.employee_name = tk.StringVar()
+        self.employee_surname = tk.StringVar()
+        registrationFrameLabel = helper.make_label(self.registrationFrame, "                Add new employee", 0, 0, "", "", "#ffeeaa", font=('times', 20, ' bold '))
+        # registrationFrameLabel = tk.Label(self.registrationFrame, text="                Add new employee",
+        #                                                 fg="black",
+        #                                                 bg="#ffeeaa",
+        #                                                 font=('times', 20, ' bold '))
+        placeholderLabel = helper.make_label(self.registrationFrame, "", 0, 3, "disabled", "", "#ffeeaa", font=('times', 20, ' bold '))
+        # placeholderLabel = tk.Label(self.registrationFrame, text="",
+        #                                                 fg="black",
+        #                                                 bg="#ffeeaa",
+        #                                                 height=3,
+        #                                                 font=('times', 20, ' bold '),
+        #                                                 state='disabled')
+        employeeNameLabel = helper.make_label(self.registrationFrame, "Employee name", 20, 1, "", "", "#ffeeaa", font=('times', 17, ' bold '))
+        # employeeNameLabel = tk.Label(self.registrationFrame, text="Employee name",
+        #                                                 width=20,
+        #                                                 height=1,
+        #                                                 bg="#ffeeaa",
+        #                                                 fg="black",
+        #                                                 font=('times', 17, ' bold '))
+        employeeName = tk.Entry(self.registrationFrame, textvariable=self.employee_name, 
+                                                        width=60,
+                                                        fg="black",
+                                                        font=('times', 15, ' bold '))
+        employeeSurnameLabel = tk.Label(self.registrationFrame, text="Employee surname",
+                                                        width=20,
+                                                        height=1,
+                                                        bg="#ffeeaa",
+                                                        fg="black",
+                                                        font=('times', 17, ' bold '))
+        employeeSurname = tk.Entry(self.registrationFrame, textvariable=self.employee_surname,
+                                                        width=60,
+                                                        fg="black",
+                                                        font=('times', 15, ' bold '))
+        employeeBirthdateLabel = tk.Label(self.registrationFrame, text="Birth date",
+                                                        width=20,
+                                                        height=1,
+                                                        bg="#ffeeaa",
+                                                        fg="black",
+                                                        font=('times', 17, ' bold '))
+        self.datePicker = DateEntry(self.registrationFrame,width= 16,
+                                                        background= "magenta3",
+                                                        foreground="white",
+                                                        bd=2,
+                                                        year=1996,
+                                                        selectmode='day',
+                                                        locale = 'en_us',
+                                                        date_pattern ='dd.mm.yyyy')
+        employeePhotoLabel = tk.Label(self.registrationFrame, text="Face picture",
+                                                        width=20,
+                                                        height=1,
+                                                        bg="#ffeeaa",
+                                                        fg="black",
+                                                        font=('times', 17, ' bold '))
+           
+        unknown_person_img = Image.open("data/images/unknown.jpeg")
+        self.employeePhoto = tk.Label(self.registrationFrame, bg="#ffeeaa")
+        
+        imgtk = ImageTk.PhotoImage(unknown_person_img) # convert image for tkinter
+        self.employeePhoto.imgtk = imgtk # anchor imgtk so it does not be deleted by garbage-collector
+        self.employeePhoto.config(image=imgtk) # show the image
+        placeholderLabel2 = tk.Label(self.registrationFrame, text="",
+                                                        fg="black",
+                                                        bg="#ffeeaa",
+                                                        height=1,
+                                                        font=('times', 20, ' bold '),
+                                                        state='disabled')
+        self.datePicker.place(relx=0.7, rely=0.39)
+        
+        submitBtn = tk.Button(self.registrationFrame, text='Submit', command=self.form_submit, width=27)
+
+        registrationFrameLabel.place(x=10, y=20)
+        placeholderLabel.grid(row=0,column=0)
+        employeeNameLabel.grid(row=1,column=0,ipady=17)
+        employeeName.grid(row=1,column=1,ipady=7)
+        employeeSurnameLabel.grid(row=2,column=0,ipady=17)
+        employeeSurname.grid(row=2,column=1,ipady=7)
+        employeeBirthdateLabel.grid(row=3,column=0,ipady=17)
+        employeePhotoLabel.grid(row=4,column=0,ipady=7)
+        self.employeePhoto.grid(row=4,column=1,ipady=17)
+        placeholderLabel2.grid(row=5,column=0,ipady=7)
+        submitBtn.grid(row=5,column=1,ipady=1,sticky='w')
+
+        self.backButton.place(width=55, relx=0.15, rely=0.15)
+        self.registrationFrame.place(relx=0.15, rely=0.2, relwidth=0.7, relheight=0.61)
 
 
 # construct the argument parse and parse the arguments

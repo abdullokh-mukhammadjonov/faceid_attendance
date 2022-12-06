@@ -1,10 +1,29 @@
+import csv
 import os
 import datetime
 import time
+import tkinter
 import cv2 as cv
 import face_recognition as face_id
 import numpy as np
 
+def generate_deatils_csv_file(file_path, cur_date, data_file_path):
+    print(" -- regenerating ...")
+    rows = []
+    with open(file_path, 'r') as csv_employees_file:
+        reader = csv.reader(csv_employees_file)
+        
+        for line in reader:
+            # # date, name, surname, arrival_time, on_time, depart_time, depart_on_time
+            row = [cur_date, line[0], line[1], '---', '---', '---', '---']
+            rows.append(row)
+        
+    csv_employees_file.close()
+    
+    with open(data_file_path, 'w') as csv_file:
+        writer = csv.writer(csv_file)
+        writer.writerows(rows)
+    csv_file.close()
 
 def get_images_and_labels(dirname):
     images = []
@@ -20,6 +39,20 @@ def get_images_and_labels(dirname):
                 images.append(image)
                 labels.append(label)
     return images, labels
+
+def get_images_and_labels_from_csv(file_path, images_dir_path):
+    labels = []
+    encodings = []
+    exists = os.path.isfile(file_path)
+    if exists:
+        with open(file_path, 'r') as csv_file:
+            reader1 = csv.reader(csv_file)
+            for line in reader1:
+                labels.append(line[0])
+                encoding = list(map((lambda x: float(x)), line[4].split("\n")))
+                encodings.append(encoding)
+        csv_file.close()
+    return labels, encodings
             
 def get_encodings(images):
     encodings = []
@@ -28,6 +61,33 @@ def get_encodings(images):
         encodings.append(face_encode)
     return encodings
 
+def get_single_image_encodings(img_path):
+    image = cv.imread(img_path)
+    return face_id.face_encodings(image)[0] # # there is only one image
+
+def get_date_and_time():
+    curr_time = time.strftime("%H:%M:%S", time.localtime())
+    curr_date = datetime.datetime.today().strftime ('%d-%b-%Y')
+    return curr_date, curr_time
+
+def make_label(parent, text, width, height, state, fg, bg, font):
+    label = tkinter.Label(parent, text=text)
+    if fg != "":
+        label.config(fg=fg)
+    else:
+        label.config(fg="black")
+    if width != 0:
+        label.config(width=width)
+    if height != 0:
+        label.config(height=height)
+    if state != "":
+        label.config(state=state)
+    if bg != "":
+        label.config(bg=bg)
+    if font != None:
+        label.config(font=font)
+    
+    return label
 
 def resize_and_pad(img, size, padColor=0):
 
@@ -67,10 +127,4 @@ def resize_and_pad(img, size, padColor=0):
     # scale and pad
     scaled_img = cv.resize(img, (new_w, new_h), interpolation=interp)
     scaled_img = cv.copyMakeBorder(scaled_img, pad_top, pad_bot, pad_left, pad_right, borderType=cv.BORDER_CONSTANT, value=padColor)
-
     return scaled_img
-
-def get_date_and_time():
-    curr_time = time.strftime("%H:%M:%S", time.localtime())
-    curr_date = datetime.datetime.today().strftime ('%d-%b-%Y')
-    return curr_date, curr_time

@@ -161,7 +161,7 @@
 #     else:
 #         with open("StudentDetails/StudentDetails.csv", 'a+') as csvFile1:
 #             writer = csv.writer(csvFile1)
-#             writer.writerow(columns)
+#             writer.ow(columns)
 #             serial = 1
 #         csvFile1.close()
 #     Id = (txt.get())
